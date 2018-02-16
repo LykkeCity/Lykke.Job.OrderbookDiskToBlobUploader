@@ -26,6 +26,8 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
             if (dirs.Length <= 1)
                 return;
 
+            int maxSize = 1024 * 1024;
+            var buffer = new byte[maxSize];
             var dirsToProcess = dirs.OrderBy(i => i).ToList();
             var watch = new Stopwatch();
             try
@@ -34,47 +36,76 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                 {
                     string dir = dirsToProcess[i];
 
-                    watch.Restart();
                     var files = Directory.EnumerateFiles(dir, "*", SearchOption.TopDirectoryOnly);
-                    watch.Stop();
-                    await _log.WriteInfoAsync(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), $"1 - {watch.ElapsedMilliseconds}");
 
                     watch.Restart();
                     var messages = new List<string>();
                     int filesCount = 0;
                     foreach (var file in files)
                     {
+                        messages.Add(File.ReadAllText(file));
+                        ++filesCount;
+                    }
+                    watch.Stop();
+                    await _log.WriteInfoAsync(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), $"1 - {watch.ElapsedMilliseconds}");
+
+                    watch.Restart();
+                    var messages2 = new List<string>();
+                    foreach (var file in files)
+                    {
                         using (var sr = File.OpenText(file))
                         {
-                            messages.Add(sr.ReadToEnd());
-                            //messages.Add(File.ReadAllText(file));
-                            ++filesCount;
+                            messages2.Add(sr.ReadToEnd());
                         }
                     }
                     watch.Stop();
                     await _log.WriteInfoAsync(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), $"2 - {watch.ElapsedMilliseconds}");
 
                     watch.Restart();
-                    string container = Path.GetFileName(directoryPath);
-                    string storagePath = Path.GetFileName(dir);
-                    await _blobSaver.SaveToBlobAsync(messages, container, storagePath);
+                    var messages3 = new List<string>();
+                    foreach (var file in files)
+                    {
+                        using (var sr = File.OpenText(file))
+                        {
+                            do
+                            {
+                                var str = sr.ReadLine();
+                                if (str == null)
+                                    break;
+                                messages3.Add(str);
+                            } while (true);
+                        }
+                    }
                     watch.Stop();
                     await _log.WriteInfoAsync(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), $"3 - {watch.ElapsedMilliseconds}");
 
-                    await _log.WriteInfoAsync(
-                        nameof(DirectoryProcessor),
-                        nameof(ProcessDirectoryAsync),
-                        $"Uploaded and deleted {filesCount} files for {container}/{storagePath}");
-
                     watch.Restart();
+                    var messages4 = new List<string>();
+                    foreach (var file in files)
+                    {
+                        using (var fs = File.OpenRead(file))
+                        {
+                            int read = fs.Read(buffer, 0, maxSize);
+                            string str = System.Text.Encoding.Default.GetString(buffer, 0, read);
+                        }
+                    }
+                    watch.Stop();
+                    await _log.WriteInfoAsync(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), $"4 - {watch.ElapsedMilliseconds}");
+
+                    string container = Path.GetFileName(directoryPath);
+                    string storagePath = Path.GetFileName(dir);
+                    await _blobSaver.SaveToBlobAsync(messages, container, storagePath);
+
                     foreach (var file in files)
                     {
                         File.Delete(file);
                     }
                     Directory.Delete(dir);
-                    //Directory.Delete(dir, true);
-                    watch.Stop();
-                    await _log.WriteInfoAsync(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), $"4 - {watch.ElapsedMilliseconds}");
+
+                    await _log.WriteInfoAsync(
+                        nameof(DirectoryProcessor),
+                        nameof(ProcessDirectoryAsync),
+                        $"Uploaded and deleted {filesCount} files for {container}/{storagePath}");
                 }
             }
             catch (Exception ex)
