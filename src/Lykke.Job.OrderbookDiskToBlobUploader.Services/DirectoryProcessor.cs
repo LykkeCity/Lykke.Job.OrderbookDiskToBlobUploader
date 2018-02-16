@@ -34,12 +34,12 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                 {
                     string dir = dirsToProcess[i];
 
-                    watch.Start();
+                    watch.Restart();
                     var files = Directory.EnumerateFiles(dir, "*", SearchOption.TopDirectoryOnly);
                     watch.Stop();
                     await _log.WriteInfoAsync(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), $"1 - {watch.ElapsedMilliseconds}");
 
-                    watch.Start();
+                    watch.Restart();
                     var messages = new List<string>();
                     int filesCount = 0;
                     foreach (var file in files)
@@ -50,7 +50,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                     watch.Stop();
                     await _log.WriteInfoAsync(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), $"2 - {watch.ElapsedMilliseconds}");
 
-                    watch.Start();
+                    watch.Restart();
                     string container = Path.GetFileName(directoryPath);
                     string storagePath = Path.GetFileName(dir);
                     await _blobSaver.SaveToBlobAsync(messages, container, storagePath);
@@ -62,7 +62,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                         nameof(ProcessDirectoryAsync),
                         $"Uploaded and deleted {filesCount} files for {container}/{storagePath}");
 
-                    watch.Start();
+                    watch.Restart();
                     Directory.Delete(dir, true);
                     watch.Stop();
                     await _log.WriteInfoAsync(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), $"4 - {watch.ElapsedMilliseconds}");
