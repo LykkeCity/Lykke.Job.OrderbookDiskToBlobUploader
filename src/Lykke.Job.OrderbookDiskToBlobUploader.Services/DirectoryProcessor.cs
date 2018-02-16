@@ -14,6 +14,9 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
         private readonly IBlobSaver _blobSaver;
         private readonly ILog _log;
 
+        private const int _maxSize = 1024 * 1024;
+        private readonly byte[] _buffer = new byte[_maxSize];
+
         public DirectoryProcessor(IBlobSaver blobSaver, ILog log)
         {
             _blobSaver = blobSaver;
@@ -26,8 +29,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
             if (dirs.Length <= 1)
                 return;
 
-            int maxSize = 1024 * 1024;
-            var buffer = new byte[maxSize];
+            
             var dirsToProcess = dirs.OrderBy(i => i).ToList();
             var watch = new Stopwatch();
             try
@@ -41,56 +43,22 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                     watch.Restart();
                     var messages = new List<string>();
                     int filesCount = 0;
+                    int ind = i % 4;
                     foreach (var file in files)
                     {
-                        messages.Add(File.ReadAllText(file));
+                        if (ind == 0)
+                            Read1(file, messages);
+                        else if (ind == 1)
+                            Read2(file, messages);
+                        else if (ind == 2)
+                            Read3(file, messages);
+                        else if (ind == 3)
+                            Read4(file, messages);
+                        //messages.Add();
                         ++filesCount;
                     }
                     watch.Stop();
-                    await _log.WriteInfoAsync(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), $"1 - {watch.ElapsedMilliseconds}");
-
-                    watch.Restart();
-                    var messages2 = new List<string>();
-                    foreach (var file in files)
-                    {
-                        using (var sr = File.OpenText(file))
-                        {
-                            messages2.Add(sr.ReadToEnd());
-                        }
-                    }
-                    watch.Stop();
-                    await _log.WriteInfoAsync(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), $"2 - {watch.ElapsedMilliseconds}");
-
-                    watch.Restart();
-                    var messages3 = new List<string>();
-                    foreach (var file in files)
-                    {
-                        using (var sr = File.OpenText(file))
-                        {
-                            do
-                            {
-                                var str = sr.ReadLine();
-                                if (str == null)
-                                    break;
-                                messages3.Add(str);
-                            } while (true);
-                        }
-                    }
-                    watch.Stop();
-                    await _log.WriteInfoAsync(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), $"3 - {watch.ElapsedMilliseconds}");
-
-                    watch.Restart();
-                    var messages4 = new List<string>();
-                    foreach (var file in files)
-                    {
-                        using (var fs = File.OpenRead(file))
-                        {
-                            int read = fs.Read(buffer, 0, maxSize);
-                            string str = System.Text.Encoding.Default.GetString(buffer, 0, read);
-                        }
-                    }
-                    watch.Stop();
-                    await _log.WriteInfoAsync(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), $"4 - {watch.ElapsedMilliseconds}");
+                    await _log.WriteInfoAsync(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), $"{ind} - {watch.ElapsedMilliseconds}");
 
                     string container = Path.GetFileName(directoryPath);
                     string storagePath = Path.GetFileName(dir);
@@ -111,6 +79,43 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
             catch (Exception ex)
             {
                 await _log.WriteErrorAsync(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), ex);
+            }
+        }
+
+        private void Read1(string file, List<string> messages)
+        {
+            messages.Add(File.ReadAllText(file));
+        }
+
+        private void Read2(string file, List<string> messages)
+        {
+            using (var sr = File.OpenText(file))
+            {
+                messages.Add(sr.ReadToEnd());
+            }
+        }
+
+        private void Read3(string file, List<string> messages)
+        {
+            using (var sr = File.OpenText(file))
+            {
+                do
+                {
+                    var str = sr.ReadLine();
+                    if (str == null)
+                        break;
+                    messages.Add(str);
+                } while (true);
+            }
+        }
+
+        private void Read4(string file, List<string> messages)
+        {
+            using (var fs = File.OpenRead(file))
+            {
+                int read = fs.Read(_buffer, 0, _maxSize);
+                string str = System.Text.Encoding.Default.GetString(_buffer, 0, read);
+                messages.Add(str);
             }
         }
     }
