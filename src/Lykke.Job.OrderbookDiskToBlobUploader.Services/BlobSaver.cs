@@ -26,9 +26,12 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
             _blobClient = CloudStorageAccount.Parse(blobConnectionString).CreateCloudBlobClient();
         }
 
-        public async Task SaveToBlobAsync(IEnumerable<string> blocks, string containerName, DateTime dateTime)
+        public async Task SaveToBlobAsync(
+            IEnumerable<string> blocks,
+            string containerName,
+            string storagePath)
         {
-            var blob = await InitBlobAsync(containerName, dateTime);
+            var blob = await InitBlobAsync(containerName, storagePath);
 
             using (var stream = new MemoryStream())
             {
@@ -45,10 +48,9 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
             }
         }
 
-        private async Task<CloudAppendBlob> InitBlobAsync(string containerName, DateTime dateTime)
+        private async Task<CloudAppendBlob> InitBlobAsync(string containerName, string storagePath)
         {
-            string storagePath = dateTime.ToString(_blobDateFormat);
-            var blobContainer = _blobClient.GetContainerReference(containerName);
+            var blobContainer = _blobClient.GetContainerReference(containerName.ToLower());
             var blob = blobContainer.GetAppendBlobReference(storagePath);
             if (await blob.ExistsAsync())
                 return blob;

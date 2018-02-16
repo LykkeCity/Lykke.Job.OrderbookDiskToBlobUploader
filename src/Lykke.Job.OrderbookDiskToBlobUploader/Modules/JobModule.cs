@@ -39,6 +39,10 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Modules
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_settings.BlobConnectionString));
 
+            builder.RegisterType<DirectoryProcessor>()
+                .As<IDirectoryProcessor>()
+                .SingleInstance();
+
             builder.RegisterType<MainPeriodicalHandler>()
                 .As<IStartable>()
                 .AutoActivate()
