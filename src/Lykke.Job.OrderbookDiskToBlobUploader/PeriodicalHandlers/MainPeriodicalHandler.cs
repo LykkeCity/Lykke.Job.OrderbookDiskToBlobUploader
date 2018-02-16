@@ -23,12 +23,13 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
             IBlobSaver blobSaver,
             string diskPath,
             int maxFilesInBatch) :
-            base(nameof(MainPeriodicalHandler), (int)TimeSpan.FromMinutes(1).TotalMilliseconds, log)
+            base(nameof(MainPeriodicalHandler), (int)TimeSpan.FromSeconds(10).TotalMilliseconds, log)
         {
             _log = log;
             _blobSaver = blobSaver;
             _diskPath = diskPath;
             _maxFilesInBatch = maxFilesInBatch <= 0 ? 1000 : maxFilesInBatch;
+            Directory.SetCurrentDirectory(_diskPath);
         }
 
         public override async Task Execute()
@@ -48,11 +49,11 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
             {
                 try
                 {
-                    string fileData = File.ReadAllText(file.FullName);
+                    string fileData = File.ReadAllText(file.Name);
                     if (fileData.Length == 0)
                     {
                         if (file.LastWriteTimeUtc.Subtract(now) >= TimeSpan.FromMinutes(1))
-                            File.Delete(file.FullName);
+                            File.Delete(file.Name);
                         continue;
                     }
 
@@ -66,11 +67,11 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
                         continue;
                     }
 
-                    string key = $"{orderbook.AssetPair}_{orderbook.IsBuy}";
+                    string key = GetKey(orderbook, file.Name);
                     if (orderbookDict.ContainsKey(key))
-                        orderbookDict[key].Add((orderbook, file.FullName));
+                        orderbookDict[key].Add((orderbook, file.Name));
                     else
-                        orderbookDict.Add(key, new List<(Orderbook, string)> { (orderbook, file.FullName) });
+                        orderbookDict.Add(key, new List<(Orderbook, string)> { (orderbook, file.Name) });
 
                     ++filesCount;
                     if (filesCount >= _maxFilesInBatch)
@@ -89,32 +90,28 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
         {
             foreach (var key in orderbookDict.Keys)
             {
-                var byDates = orderbookDict[key].GroupBy(o => o.Item1.Timestamp.Date);
-                foreach (var dateGroup in byDates)
+                try
                 {
-                    var byHour = dateGroup.GroupBy(i => i.Item1.Timestamp.Hour);
-                    foreach (var hourGroup in byHour)
+                    var items = orderbookDict[key].OrderBy(i => i.Item1.Timestamp);
+                    var messages = items.Select(i => OrderbookConverter.FormatMessage(i.Item1));
+                    var first = items.First().Item1;
+                    await _blobSaver.SaveToBlobAsync(messages, GetContainerName(first), first.Timestamp);
+
+                    int filesCount = 0;
+                    foreach (var item in items)
                     {
-                        try
-                        {
-                            var messages = hourGroup.Select(i => OrderbookConverter.FormatMessage(i.Item1));
-                            var first = hourGroup.First().Item1;
-                            await _blobSaver.SaveToBlobAsync(messages, GetContainerName(first), first.Timestamp);
-
-                            int filesCount = 0;
-                            foreach (var item in hourGroup)
-                            {
-                                File.Delete(item.Item2);
-                                ++filesCount;
-                            }
-
-                            await _log.WriteInfoAsync(nameof(MainPeriodicalHandler), nameof(UploadDataAsync), $"Uploaded and deleted {filesCount} files");
-                        }
-                        catch (Exception ex)
-                        {
-                            await _log.WriteErrorAsync(nameof(MainPeriodicalHandler), nameof(UploadDataAsync), ex);
-                        }
+                        File.Delete(item.Item2);
+                        ++filesCount;
                     }
+
+                    await _log.WriteInfoAsync(
+                        nameof(MainPeriodicalHandler),
+                        nameof(UploadDataAsync),
+                        $"Uploaded and deleted {filesCount} files for {key}");
+                }
+                catch (Exception ex)
+                {
+                    await _log.WriteErrorAsync(nameof(MainPeriodicalHandler), nameof(UploadDataAsync), ex);
                 }
             }
         }
@@ -122,6 +119,11 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
         private string GetContainerName(Orderbook item)
         {
             return item.AssetPair.ToLower() + (item.IsBuy ? "-buy" : "-sell");
+        }
+
+        private string GetKey(Orderbook item, string fileName)
+        {
+            return $"{item.AssetPair}_{item.IsBuy}_{fileName.Substring(0, 11)}";
         }
     }
 }
