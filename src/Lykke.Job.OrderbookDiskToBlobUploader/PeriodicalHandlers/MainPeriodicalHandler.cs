@@ -101,10 +101,14 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
                             var first = hourGroup.First().Item1;
                             await _blobSaver.SaveToBlobAsync(messages, GetContainerName(first), first.Timestamp);
 
+                            int filesCount = 0;
                             foreach (var item in hourGroup)
                             {
                                 File.Delete(item.Item2);
+                                ++filesCount;
                             }
+
+                            await _log.WriteInfoAsync(nameof(MainPeriodicalHandler), nameof(UploadDataAsync), $"Uploaded and deleted {filesCount} files");
                         }
                         catch (Exception ex)
                         {
