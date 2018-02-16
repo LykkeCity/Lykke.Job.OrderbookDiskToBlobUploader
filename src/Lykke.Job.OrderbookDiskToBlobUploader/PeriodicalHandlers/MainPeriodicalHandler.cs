@@ -33,30 +33,60 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
 
         public override async Task Execute()
         {
+            var orderbookDataDict = await ReadFilesAsync();
+
+            await UploadDataAsync(orderbookDataDict);
+        }
+
+        private async Task<Dictionary<string, List<(Orderbook, string)>>> ReadFilesAsync()
+        {
             var files = new DirectoryInfo(_diskPath).EnumerateFiles();
             var orderbookDict = new Dictionary<string, List<(Orderbook, string)>>();
             int filesCount = 0;
             var now = DateTime.UtcNow;
             foreach (var file in files)
             {
-                var fileData = File.ReadAllText(file.FullName);
-                if (fileData.Length == 0)
+                try
                 {
-                    if (file.LastWriteTimeUtc.Subtract(now) >= TimeSpan.FromMinutes(1))
-                        File.Delete(file.FullName);
-                    continue;
-                }
-                var orderbook = OrderbookConverter.Deserialize(fileData);
-                string key = $"{orderbook.AssetPair}_{orderbook.IsBuy}";
-                if (orderbookDict.ContainsKey(key))
-                    orderbookDict[key].Add((orderbook, file.FullName));
-                else
-                    orderbookDict.Add(key, new List<(Orderbook, string)> { (orderbook, file.FullName) });
+                    string fileData = File.ReadAllText(file.FullName);
+                    if (fileData.Length == 0)
+                    {
+                        if (file.LastWriteTimeUtc.Subtract(now) >= TimeSpan.FromMinutes(1))
+                            File.Delete(file.FullName);
+                        continue;
+                    }
 
-                ++filesCount;
-                if (filesCount >= _maxFilesInBatch)
-                    break;
+                    if (string.IsNullOrWhiteSpace(fileData))
+                        continue;
+
+                    var orderbook = OrderbookConverter.Deserialize(fileData);
+                    if (orderbook == null)
+                    {
+                        await _log.WriteWarningAsync(nameof(MainPeriodicalHandler), nameof(ReadFilesAsync), $"Couldn't deserialize {fileData}");
+                        continue;
+                    }
+
+                    string key = $"{orderbook.AssetPair}_{orderbook.IsBuy}";
+                    if (orderbookDict.ContainsKey(key))
+                        orderbookDict[key].Add((orderbook, file.FullName));
+                    else
+                        orderbookDict.Add(key, new List<(Orderbook, string)> { (orderbook, file.FullName) });
+
+                    ++filesCount;
+                    if (filesCount >= _maxFilesInBatch)
+                        break;
+                }
+                catch (Exception ex)
+                {
+                    await _log.WriteErrorAsync(nameof(MainPeriodicalHandler), nameof(ReadFilesAsync), ex);
+                }
             }
+
+            return orderbookDict;
+        }
+
+        private async Task UploadDataAsync(Dictionary<string, List<(Orderbook, string)>> orderbookDict)
+        {
             foreach (var key in orderbookDict.Keys)
             {
                 var byDates = orderbookDict[key].GroupBy(o => o.Item1.Timestamp.Date);
@@ -78,7 +108,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
                         }
                         catch (Exception ex)
                         {
-                            await _log.WriteErrorAsync(nameof(MainPeriodicalHandler), nameof(Execute), ex);
+                            await _log.WriteErrorAsync(nameof(MainPeriodicalHandler), nameof(UploadDataAsync), ex);
                         }
                     }
                 }
