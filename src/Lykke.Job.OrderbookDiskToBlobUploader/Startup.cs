@@ -11,6 +11,7 @@ using Lykke.Job.OrderbookDiskToBlobUploader.Settings;
 using Lykke.Job.OrderbookDiskToBlobUploader.Models;
 using Lykke.Job.OrderbookDiskToBlobUploader.Modules;
 using Lykke.Logs;
+using Lykke.Logs.Slack;
 using Lykke.SettingsReader;
 using Lykke.SlackNotification.AzureQueue;
 using Microsoft.AspNetCore.Builder;
@@ -203,10 +204,11 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader
                 persistenceManager,
                 slackNotificationsManager,
                 consoleLogger);
-
             azureStorageLogger.Start();
-
             aggregateLogger.AddLog(azureStorageLogger);
+
+            var logToSlack = LykkeLogToSlack.Create(slackService, "Bridges", LogLevel.Error | LogLevel.FatalError | LogLevel.Warning);
+            aggregateLogger.AddLog(logToSlack);
 
             return aggregateLogger;
         }
