@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Collections.Generic;
 using System.IO;
+using System.Globalization;
 using System.Threading.Tasks;
 using Common.Log;
 using Lykke.Job.OrderbookDiskToBlobUploader.Core.Services;
@@ -23,23 +24,34 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
 
         public async Task ProcessDirectoryAsync(string directoryPath)
         {
-            if (File.Exists(_inProgressMarkFile))
-                return;
-
-            try
-            {
-                File.Create(_inProgressMarkFile).Dispose();
-            }
-            catch (Exception)
-            {
-                if (!File.Exists(_inProgressMarkFile))
-                    await _log.WriteWarningAsync(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), "Couldn't create in progress mark file");
-                return;
-            }
-
             var dirs = Directory.GetDirectories(directoryPath, "*", SearchOption.TopDirectoryOnly);
             if (dirs.Length <= 1)
                 return;
+
+            string inProgressFilePath = Path.Combine(directoryPath, _inProgressMarkFile);
+            if (File.Exists(inProgressFilePath))
+            {
+                var creationDate = File.GetCreationTimeUtc(inProgressFilePath);
+                if (DateTime.UtcNow.Subtract(creationDate).TotalDays < 1)
+                    return;
+            }
+            else
+            {
+                try
+                {
+                    File.Create(inProgressFilePath).Dispose();
+                }
+                catch (Exception ex)
+                {
+                    if (!File.Exists(inProgressFilePath))
+                        await _log.WriteWarningAsync(
+                            nameof(DirectoryProcessor),
+                            nameof(ProcessDirectoryAsync),
+                            "Couldn't create in progress mark file",
+                            ex);
+                    return;
+                }
+            }
 
             var dirsToProcess = dirs.OrderBy(i => i).ToList();
             try
@@ -75,7 +87,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                     {
                         File.Delete(file);
                     }
-                    File.Delete(_inProgressMarkFile);
+                    File.Delete(inProgressFilePath);
                     Directory.Delete(dir);
 
                     await _log.WriteInfoAsync(
