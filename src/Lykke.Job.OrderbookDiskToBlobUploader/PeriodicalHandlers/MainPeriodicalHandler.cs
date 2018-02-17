@@ -28,13 +28,11 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
             Directory.SetCurrentDirectory(_diskPath);
         }
 
-        public override async Task Execute()
+        public override Task Execute()
         {
             var dirs = Directory.GetDirectories(_diskPath, "*", SearchOption.TopDirectoryOnly);
-            foreach (var dir in dirs)
-            {
-                await _directoryProcessor.ProcessDirectoryAsync(dir);
-            }
+            Parallel.ForEach(dirs, dir => _directoryProcessor.ProcessDirectoryAsync(dir).GetAwaiter().GetResult());
+            return Task.CompletedTask;
         }
     }
 }
