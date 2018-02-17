@@ -8,6 +8,8 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader
 {
     internal sealed class Program
     {
+        internal const int Port = 5000;
+
         public static string EnvInfo => Environment.GetEnvironmentVariable("ENV_INFO");
 
         public static async Task Main(string[] args)
@@ -24,7 +26,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader
             {
                 var webHost = new WebHostBuilder()
                     .UseKestrel()
-                    .UseUrls("http://*:5000")
+                    .UseUrls($"http://*:{Port}")
                     .UseContentRoot(Directory.GetCurrentDirectory())
                     .UseStartup<Startup>()
                     .UseApplicationInsights()

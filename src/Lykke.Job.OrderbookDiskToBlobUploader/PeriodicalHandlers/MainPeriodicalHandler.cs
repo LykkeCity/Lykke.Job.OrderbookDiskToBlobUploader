@@ -35,24 +35,24 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
         {
             while(!_apiIsReady)
             {
-                WebRequest request = WebRequest.Create("http://localhost:5000/api/isalive");
+                WebRequest request = WebRequest.Create($"http://localhost:{Program.Port}/api/isalive");
                 try
                 {
                     HttpWebResponse response = (HttpWebResponse)request.GetResponse();
                     _apiIsReady = response != null && response.StatusCode == HttpStatusCode.OK;
                     if (!_apiIsReady)
-                        await Task.Delay(TimeSpan.FromSeconds(3));
+                        await Task.Delay(TimeSpan.FromSeconds(1));
                 }
                 catch
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(3));
+                    await Task.Delay(TimeSpan.FromSeconds(1));
                 }
             }
 
             var dirs = Directory.GetDirectories(_diskPath, "*", SearchOption.TopDirectoryOnly);
             Parallel.ForEach(
                 dirs,
-                new ParallelOptions { MaxDegreeOfParallelism = 4 },
+                new ParallelOptions { MaxDegreeOfParallelism = 8 },
                 dir => _directoryProcessor.ProcessDirectoryAsync(dir).GetAwaiter().GetResult());
         }
     }

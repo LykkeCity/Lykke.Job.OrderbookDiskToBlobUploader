@@ -2,7 +2,6 @@
 using System.Linq;
 using System.Collections.Generic;
 using System.IO;
-using System.Globalization;
 using System.Threading.Tasks;
 using Common.Log;
 using Lykke.Job.OrderbookDiskToBlobUploader.Core.Services;
