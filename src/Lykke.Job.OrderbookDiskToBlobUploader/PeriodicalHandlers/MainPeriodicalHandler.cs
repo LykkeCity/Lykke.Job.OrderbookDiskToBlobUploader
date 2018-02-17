@@ -14,6 +14,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
         private readonly IDirectoryProcessor _directoryProcessor;
         private readonly string _diskPath;
         private readonly int _maxFilesInBatch;
+        private readonly int _workersMaxCount;
 
         private bool _apiIsReady = false;
 
@@ -21,13 +22,15 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
             ILog log,
             IDirectoryProcessor directoryProcessor,
             string diskPath,
-            int maxFilesInBatch) :
+            int maxFilesInBatch,
+            int workersMaxCount) :
             base(nameof(MainPeriodicalHandler), (int)TimeSpan.FromHours(1).TotalMilliseconds, log)
         {
             _log = log;
             _directoryProcessor = directoryProcessor;
             _diskPath = diskPath;
             _maxFilesInBatch = maxFilesInBatch <= 0 ? 1000 : maxFilesInBatch;
+            _workersMaxCount = workersMaxCount <= 0 ? 8 : workersMaxCount;
             Directory.SetCurrentDirectory(_diskPath);
         }
 
@@ -52,7 +55,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
             var dirs = Directory.GetDirectories(_diskPath, "*", SearchOption.TopDirectoryOnly);
             Parallel.ForEach(
                 dirs,
-                new ParallelOptions { MaxDegreeOfParallelism = 8 },
+                new ParallelOptions { MaxDegreeOfParallelism = _workersMaxCount },
                 dir => _directoryProcessor.ProcessDirectoryAsync(dir).GetAwaiter().GetResult());
         }
     }
