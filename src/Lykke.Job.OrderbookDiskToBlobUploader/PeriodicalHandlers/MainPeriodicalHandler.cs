@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using System.IO;
+using System.Net;
 using Common;
 using Common.Log;
 using Lykke.Job.OrderbookDiskToBlobUploader.Core.Services;
@@ -13,6 +14,8 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
         private readonly IDirectoryProcessor _directoryProcessor;
         private readonly string _diskPath;
         private readonly int _maxFilesInBatch;
+
+        private bool _apiIsReady = false;
 
         public MainPeriodicalHandler(
             ILog log,
@@ -28,14 +31,29 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
             Directory.SetCurrentDirectory(_diskPath);
         }
 
-        public override Task Execute()
+        public async override Task Execute()
         {
+            while(!_apiIsReady)
+            {
+                WebRequest request = WebRequest.Create("http://localhost:5000/api/isalive");
+                try
+                {
+                    HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                    _apiIsReady = response != null && response.StatusCode == HttpStatusCode.OK;
+                    if (!_apiIsReady)
+                        await Task.Delay(TimeSpan.FromSeconds(3));
+                }
+                catch
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(3));
+                }
+            }
+
             var dirs = Directory.GetDirectories(_diskPath, "*", SearchOption.TopDirectoryOnly);
             Parallel.ForEach(
                 dirs,
                 new ParallelOptions { MaxDegreeOfParallelism = 4 },
                 dir => _directoryProcessor.ProcessDirectoryAsync(dir).GetAwaiter().GetResult());
-            return Task.CompletedTask;
         }
     }
 }
