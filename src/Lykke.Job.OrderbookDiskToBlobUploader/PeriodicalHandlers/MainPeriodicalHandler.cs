@@ -31,7 +31,10 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
         public override Task Execute()
         {
             var dirs = Directory.GetDirectories(_diskPath, "*", SearchOption.TopDirectoryOnly);
-            Parallel.ForEach(dirs, dir => _directoryProcessor.ProcessDirectoryAsync(dir).GetAwaiter().GetResult());
+            Parallel.ForEach(
+                dirs,
+                new ParallelOptions { MaxDegreeOfParallelism = 4 },
+                dir => _directoryProcessor.ProcessDirectoryAsync(dir).GetAwaiter().GetResult());
             return Task.CompletedTask;
         }
     }
