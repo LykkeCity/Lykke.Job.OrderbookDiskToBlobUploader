@@ -57,6 +57,8 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
                 dirs,
                 new ParallelOptions { MaxDegreeOfParallelism = _workersMaxCount },
                 dir => _directoryProcessor.ProcessDirectoryAsync(dir).GetAwaiter().GetResult());
+
+            await _log.WriteInfoAsync(nameof(MainPeriodicalHandler), nameof(Execute), "Directories are processed.");
         }
     }
 }
