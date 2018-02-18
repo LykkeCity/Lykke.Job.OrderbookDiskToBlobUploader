@@ -30,8 +30,6 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Settings
 
         public string DiskPath { get; set; }
 
-        public int MaxFilesInBatch { get; set; }
-
         public int WorkersMaxCount { get; set; }
     }
 }

@@ -11,8 +11,6 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
 {
     public class BlobSaver : IBlobSaver
     {
-        private const string _blobDateFormat = "yyyy-MM-dd-HH";
-
         private readonly CloudBlobClient _blobClient;
         private readonly BlobRequestOptions _blobRequestOptions = new BlobRequestOptions
         {
