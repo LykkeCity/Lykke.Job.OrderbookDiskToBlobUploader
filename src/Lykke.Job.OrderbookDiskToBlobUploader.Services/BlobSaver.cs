@@ -49,6 +49,8 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
         private async Task<CloudAppendBlob> InitBlobAsync(string containerName, string storagePath)
         {
             var blobContainer = _blobClient.GetContainerReference(containerName.ToLower());
+            if (!(await blobContainer.ExistsAsync()))
+                await blobContainer.CreateAsync(BlobContainerPublicAccessType.Container, null, null);
             var blob = blobContainer.GetAppendBlobReference(storagePath);
             if (await blob.ExistsAsync())
                 return blob;
