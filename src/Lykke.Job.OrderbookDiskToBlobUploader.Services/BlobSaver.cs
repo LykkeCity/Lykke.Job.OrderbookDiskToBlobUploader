@@ -17,8 +17,6 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
             MaximumExecutionTime = TimeSpan.FromMinutes(15),
         };
 
-        private DateTime _lastBatchSave = DateTime.MinValue;
-
         public BlobSaver(string blobConnectionString)
         {
             _blobClient = CloudStorageAccount.Parse(blobConnectionString).CreateCloudBlobClient();

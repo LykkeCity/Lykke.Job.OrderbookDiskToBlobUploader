@@ -90,9 +90,9 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                     Directory.Delete(dir);
 
                     await _log.WriteInfoAsync(
-                        nameof(DirectoryProcessor),
-                        nameof(ProcessDirectoryAsync),
-                        $"Uploaded and deleted {filesCount} files for {container}/{storagePath}");
+                        "DirectoryProcessor.ProcessDirectoryAsync",
+                        container,
+                        $"Uploaded and deleted {filesCount} files for {storagePath}");
                 }
             }
             catch (Exception ex)
