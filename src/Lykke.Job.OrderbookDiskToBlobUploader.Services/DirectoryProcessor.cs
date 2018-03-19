@@ -87,7 +87,14 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                         File.Delete(file);
                     }
                     File.Delete(inProgressFilePath);
-                    Directory.Delete(dir);
+                    try
+                    {
+                        Directory.Delete(dir);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new InvalidOperationException($"Failed to delete {dir} folder", ex);
+                    }
 
                     await _log.WriteInfoAsync(
                         "DirectoryProcessor.ProcessDirectoryAsync",
@@ -97,7 +104,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
             }
             catch (Exception ex)
             {
-                await _log.WriteErrorAsync(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), ex);
+                await _log.WriteErrorAsync("DirectoryProcessor.ProcessDirectoryAsync", directoryPath, ex);
             }
         }
     }
