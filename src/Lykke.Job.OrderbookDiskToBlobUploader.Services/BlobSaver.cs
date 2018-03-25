@@ -11,6 +11,8 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
 {
     public class BlobSaver : IBlobSaver
     {
+        private const int _maxBlockSize = 4 * 1024 * 1024; // 4Mb
+
         private readonly CloudBlobClient _blobClient;
         private readonly BlobRequestOptions _blobRequestOptions = new BlobRequestOptions
         {
@@ -35,11 +37,23 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                 {
                     foreach (var block in blocks)
                     {
+                        if (stream.Length + block.Length * 2 >= _maxBlockSize)
+                        {
+                            stream.Position = 0;
+                            await blob.AppendFromStreamAsync(stream, null, _blobRequestOptions, null);
+                            stream.Position = 0;
+                            stream.SetLength(0);
+                        }
+
                         writer.WriteLine(block);
+                        writer.Flush();
                     }
-                    writer.Flush();
-                    stream.Position = 0;
-                    await blob.AppendFromStreamAsync(stream, null, _blobRequestOptions, null);
+
+                    if (stream.Length > 0)
+                    {
+                        stream.Position = 0;
+                        await blob.AppendFromStreamAsync(stream, null, _blobRequestOptions, null);
+                    }
                 }
             }
         }
@@ -48,21 +62,13 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
         {
             var blobContainer = _blobClient.GetContainerReference(containerName.ToLower());
             if (!(await blobContainer.ExistsAsync()))
-                await blobContainer.CreateAsync(BlobContainerPublicAccessType.Container, null, null);
-            var blob = blobContainer.GetAppendBlobReference(storagePath);
-            if (await blob.ExistsAsync())
-                return blob;
+                await blobContainer.CreateAsync(BlobContainerPublicAccessType.Container, _blobRequestOptions, null);
 
-            try
-            {
-                await blob.CreateOrReplaceAsync(AccessCondition.GenerateIfNotExistsCondition(), null, null);
-                blob.Properties.ContentType = "text/plain";
-                blob.Properties.ContentEncoding = Encoding.UTF8.WebName;
-                await blob.SetPropertiesAsync(null, _blobRequestOptions, null);
-            }
-            catch (StorageException)
-            {
-            }
+            var blob = blobContainer.GetAppendBlobReference(storagePath);
+            await blob.CreateOrReplaceAsync(AccessCondition.GenerateIfNotExistsCondition(), _blobRequestOptions, null);
+            blob.Properties.ContentType = "text/plain";
+            blob.Properties.ContentEncoding = Encoding.UTF8.WebName;
+            await blob.SetPropertiesAsync(null, _blobRequestOptions, null);
 
             return blob;
         }
