@@ -80,7 +80,14 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
 
                     string container = Path.GetFileName(directoryPath);
                     string storagePath = Path.GetFileName(dir);
-                    await _blobSaver.SaveToBlobAsync(messages, container, storagePath);
+                    try
+                    {
+                        await _blobSaver.SaveToBlobAsync(messages, container, storagePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new InvalidOperationException($"Couldn't save on {container} into {storagePath}", ex);
+                    }
 
                     foreach (var file in files)
                     {
