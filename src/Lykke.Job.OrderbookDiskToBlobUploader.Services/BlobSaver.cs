@@ -65,7 +65,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                 await blobContainer.CreateAsync(BlobContainerPublicAccessType.Container, _blobRequestOptions, null);
 
             var blob = blobContainer.GetAppendBlobReference(storagePath);
-            await blob.CreateOrReplaceAsync(AccessCondition.GenerateIfNotExistsCondition(), _blobRequestOptions, null);
+            await blob.CreateOrReplaceAsync(null, _blobRequestOptions, null);
             blob.Properties.ContentType = "text/plain";
             blob.Properties.ContentEncoding = Encoding.UTF8.WebName;
             await blob.SetPropertiesAsync(null, _blobRequestOptions, null);
