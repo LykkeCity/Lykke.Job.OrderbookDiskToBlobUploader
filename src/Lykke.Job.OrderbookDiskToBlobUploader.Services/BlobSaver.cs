@@ -60,7 +60,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
 
         private async Task<CloudAppendBlob> InitBlobAsync(string containerName, string storagePath)
         {
-            var blobContainer = _blobClient.GetContainerReference(containerName.ToLower());
+            var blobContainer = _blobClient.GetContainerReference(containerName.ToLower().Replace('.', '-').Replace('_', '-'));
             if (!(await blobContainer.ExistsAsync()))
                 await blobContainer.CreateAsync(BlobContainerPublicAccessType.Container, _blobRequestOptions, null);
 
