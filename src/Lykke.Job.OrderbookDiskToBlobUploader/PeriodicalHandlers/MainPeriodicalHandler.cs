@@ -22,7 +22,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
             IDirectoryProcessor directoryProcessor,
             string diskPath,
             int workersMaxCount) :
-            base(nameof(MainPeriodicalHandler), (int)TimeSpan.FromMinutes(30).TotalMilliseconds, log)
+            base(nameof(MainPeriodicalHandler), (int)TimeSpan.FromMinutes(1).TotalMilliseconds, log)
         {
             _log = log;
             _directoryProcessor = directoryProcessor;
