@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using System.IO;
 using System.Net;
@@ -49,13 +50,21 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
                 }
             }
 
-            var dirs = Directory.GetDirectories(_diskPath, "*", SearchOption.TopDirectoryOnly);
-            Parallel.ForEach(
-                dirs,
-                new ParallelOptions { MaxDegreeOfParallelism = _workersMaxCount },
-                dir => _directoryProcessor.ProcessDirectoryAsync(dir).GetAwaiter().GetResult());
+            var directories = Directory.GetDirectories(_diskPath, "*", SearchOption.TopDirectoryOnly);
+            var workerTasks = Enumerable.Range(0, _workersMaxCount).Select(i => ProcessDirectoriesAsync(i, directories));
+            await Task.WhenAll(workerTasks);
 
             await _log.WriteInfoAsync(nameof(MainPeriodicalHandler), nameof(Execute), "Directories are processed.");
+        }
+
+        private async Task ProcessDirectoriesAsync(int num, string[] directories)
+        {
+            await Task.Delay(TimeSpan.FromMinutes(num));
+
+            for (int i = num; i < directories.Length; i += _workersMaxCount)
+            {
+                await _directoryProcessor.ProcessDirectoryAsync(directories[i]);
+            }
         }
     }
 }
