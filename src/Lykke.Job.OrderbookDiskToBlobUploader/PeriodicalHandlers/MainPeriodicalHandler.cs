@@ -22,6 +22,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
         private volatile int _processedDirectoriesCount;
         private DateTime? _idleExecutionStart;
         private int _workersMaxCount;
+        private bool _firstExecution = true;
         private bool _apiIsReady = false;
 
         public MainPeriodicalHandler(
@@ -71,7 +72,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
                 {
                     _idleExecutionStart = null;
                 }
-                else
+                else if (!_firstExecution)
                 {
                     _workersMaxCount += 2;
                     await _log.WriteWarningAsync("MainPeriodicalHandler.Execute", "WorkersIncreased", $"Increased workers count to {_workersMaxCount}.");
@@ -89,6 +90,9 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
                     await _log.WriteWarningAsync("MainPeriodicalHandler.Execute", "WorkersDecreased", $"Decreased workers count to {_workersMaxCount}.");
                 }
             }
+
+            if (_firstExecution)
+                _firstExecution = false;
         }
 
         private async Task ProcessDirectoriesAsync(int num, ConcurrentQueue<string> directories)
