@@ -21,18 +21,18 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
             _log = log;
         }
 
-        public async Task ProcessDirectoryAsync(string directoryPath)
+        public async Task<bool> ProcessDirectoryAsync(string directoryPath)
         {
             var dirs = Directory.GetDirectories(directoryPath, "*", SearchOption.TopDirectoryOnly);
             if (dirs.Length <= 1)
-                return;
+                return false;
 
             string inProgressFilePath = Path.Combine(directoryPath, _inProgressMarkFile);
             if (File.Exists(inProgressFilePath))
             {
                 var creationDate = File.GetCreationTimeUtc(inProgressFilePath);
                 if (DateTime.UtcNow.Subtract(creationDate).TotalDays < 1)
-                    return;
+                    return false;
             }
             else
             {
@@ -48,11 +48,12 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                             nameof(ProcessDirectoryAsync),
                             "Couldn't create in progress mark file",
                             ex);
-                    return;
+                    return false;
                 }
             }
 
             var dirsToProcess = dirs.OrderBy(i => i).ToList();
+            int processedDirsCount = 0;
             try
             {
                 for (int i = 0; i < dirsToProcess.Count - 1; ++i)
@@ -107,12 +108,15 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                         "DirectoryProcessor.ProcessDirectoryAsync",
                         container,
                         $"Uploaded and deleted {filesCount} files for {storagePath}");
+
+                    ++processedDirsCount;
                 }
             }
             catch (Exception ex)
             {
                 await _log.WriteErrorAsync("DirectoryProcessor.ProcessDirectoryAsync", directoryPath, ex);
             }
+            return processedDirsCount > 0;
         }
     }
 }
