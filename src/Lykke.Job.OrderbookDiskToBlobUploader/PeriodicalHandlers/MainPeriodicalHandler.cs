@@ -14,6 +14,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
     public class MainPeriodicalHandler : TimerPeriod
     {
         private const int _workerReduceReserveInMinutes = 15;
+        private const int _minProcessedDirectoriesCountForWorkersChange = 10;
 
         private readonly ILog _log;
         private readonly IDirectoryProcessor _directoryProcessor;
@@ -66,7 +67,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
 
             await _log.WriteInfoAsync(nameof(MainPeriodicalHandler), nameof(Execute), $"{_processedDirectoriesCount} directories are processed.");
 
-            if (_processedDirectoriesCount > 0)
+            if (_processedDirectoriesCount > _minProcessedDirectoriesCountForWorkersChange)
             {
                 if (_idleExecutionStart.HasValue)
                 {
@@ -88,6 +89,8 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
                 {
                     --_workersMaxCount;
                     await _log.WriteWarningAsync("MainPeriodicalHandler.Execute", "WorkersDecreased", $"Decreased workers count to {_workersMaxCount}.");
+                    _idleExecutionStart = null;
+                    _firstExecution = true;
                 }
             }
 
