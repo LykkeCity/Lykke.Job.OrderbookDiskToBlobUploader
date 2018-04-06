@@ -73,7 +73,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
                 }
                 else
                 {
-                    ++_workersMaxCount;
+                    _workersMaxCount += 2;
                     await _log.WriteWarningAsync("MainPeriodicalHandler.Execute", "WorkersIncreased", $"Increased workers count to {_workersMaxCount}.");
                 }
             }
