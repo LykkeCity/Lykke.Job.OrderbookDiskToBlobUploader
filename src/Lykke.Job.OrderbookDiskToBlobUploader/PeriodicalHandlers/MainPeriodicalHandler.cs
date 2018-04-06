@@ -73,7 +73,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
                 {
                     _idleExecutionStart = null;
                 }
-                else if (!_firstExecution)
+                else if (!_firstExecution && _workersMaxCount < 15)
                 {
                     _workersMaxCount += 2;
                     await _log.WriteWarningAsync("MainPeriodicalHandler.Execute", "WorkersIncreased", $"Increased workers count to {_workersMaxCount}.");
@@ -85,7 +85,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
                 {
                     _idleExecutionStart = start;
                 }
-                else if ((DateTime.UtcNow - _idleExecutionStart.Value).TotalMinutes >= _workerReduceReserveInMinutes)
+                else if ((DateTime.UtcNow - _idleExecutionStart.Value).TotalMinutes >= _workerReduceReserveInMinutes && _workersMaxCount > 1)
                 {
                     --_workersMaxCount;
                     await _log.WriteWarningAsync("MainPeriodicalHandler.Execute", "WorkersDecreased", $"Decreased workers count to {_workersMaxCount}.");
