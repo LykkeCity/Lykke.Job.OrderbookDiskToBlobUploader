@@ -73,10 +73,15 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
                 {
                     _idleExecutionStart = null;
                 }
-                else if (!_firstExecution && _workersMaxCount < 15)
+                else
                 {
-                    _workersMaxCount += 2;
-                    await _log.WriteWarningAsync("MainPeriodicalHandler.Execute", "WorkersIncreased", $"Increased workers count to {_workersMaxCount}.");
+                    if (!_firstExecution && _workersMaxCount < 15)
+                    {
+                        _workersMaxCount += 2;
+                        await _log.WriteInfoAsync("MainPeriodicalHandler.Execute", "WorkersIncreased", $"Increased workers count to {_workersMaxCount}.");
+                    }
+                    if (_firstExecution)
+                        _firstExecution = false;
                 }
             }
             else
@@ -88,14 +93,11 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
                 else if ((DateTime.UtcNow - _idleExecutionStart.Value).TotalMinutes >= _workerReduceReserveInMinutes && _workersMaxCount > 1)
                 {
                     --_workersMaxCount;
-                    await _log.WriteWarningAsync("MainPeriodicalHandler.Execute", "WorkersDecreased", $"Decreased workers count to {_workersMaxCount}.");
+                    await _log.WriteInfoAsync("MainPeriodicalHandler.Execute", "WorkersDecreased", $"Decreased workers count to {_workersMaxCount}.");
                     _idleExecutionStart = null;
                     _firstExecution = true;
                 }
             }
-
-            if (_firstExecution)
-                _firstExecution = false;
         }
 
         private async Task ProcessDirectoriesAsync(int num, ConcurrentQueue<string> directories)
