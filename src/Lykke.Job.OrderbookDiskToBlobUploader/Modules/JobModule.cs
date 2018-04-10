@@ -51,7 +51,8 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Modules
                 .AutoActivate()
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_settings.DiskPath))
-                .WithParameter("workersMaxCount", _settings.WorkersMaxCount);
+                .WithParameter("workersMaxCount", _settings.WorkersMaxCount)
+                .WithParameter("workersMinCount", _settings.WorkersMinCount);
         }
     }
 }
