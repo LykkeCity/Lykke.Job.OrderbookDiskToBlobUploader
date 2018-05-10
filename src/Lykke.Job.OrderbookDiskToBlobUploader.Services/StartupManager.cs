@@ -1,4 +1,6 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+using Autofac;
 using JetBrains.Annotations;
 using Lykke.Job.OrderbookDiskToBlobUploader.Core.Services;
 
@@ -7,11 +9,21 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
     [UsedImplicitly]
     public class StartupManager : IStartupManager
     {
-        public async Task StartAsync()
-        {
-            // TODO: Implement your startup logic here. Good idea is to log every step
+        private readonly List<IStartable> _items = new List<IStartable>();
 
-            await Task.CompletedTask;
+        public void Register(IStartable startable)
+        {
+            _items.Add(startable);
+        }
+
+        public Task StartAsync()
+        {
+            foreach (var item in _items)
+            {
+                item.Start();
+            }
+
+            return Task.CompletedTask;
         }
     }
 }

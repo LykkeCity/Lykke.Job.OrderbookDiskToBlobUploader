@@ -4,7 +4,6 @@ using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
-using System.Net;
 using JetBrains.Annotations;
 using Common;
 using Common.Log;
@@ -28,11 +27,11 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
         private DateTime? _idleExecutionStart;
         private int _workersCount;
         private bool _firstExecution = true;
-        private bool _apiIsReady;
 
         public MainPeriodicalHandler(
             ILog log,
             IDirectoryProcessor directoryProcessor,
+            IStartupManager startupManager,
             string diskPath,
             int workersMaxCount,
             int workersMinCount) :
@@ -45,26 +44,12 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
             _workersMinCount = workersMinCount <= 0 ? 2 : workersMinCount;
             _workersCount = (_workersMaxCount + _workersMinCount) / 2;
             Directory.SetCurrentDirectory(_diskPath);
+
+            startupManager.Register(this);
         }
 
         public override async Task Execute()
         {
-            while(!_apiIsReady)
-            {
-                var request = WebRequest.Create($"http://localhost:{Program.Port}/api/isalive");
-                try
-                {
-                    var response = (HttpWebResponse)request.GetResponse();
-                    _apiIsReady = response.StatusCode == HttpStatusCode.OK;
-                    if (!_apiIsReady)
-                        await Task.Delay(TimeSpan.FromSeconds(1));
-                }
-                catch
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(1));
-                }
-            }
-
             _processedDirectoriesCount = 0;
             var start = DateTime.UtcNow;
             var directories = Directory.GetDirectories(_diskPath, "*", SearchOption.TopDirectoryOnly);

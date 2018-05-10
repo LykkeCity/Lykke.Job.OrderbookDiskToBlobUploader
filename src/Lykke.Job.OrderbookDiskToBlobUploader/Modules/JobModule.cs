@@ -30,10 +30,12 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Modules
                 .SingleInstance();
 
             builder.RegisterType<StartupManager>()
-                .As<IStartupManager>();
+                .As<IStartupManager>()
+                .SingleInstance();
 
             builder.RegisterType<ShutdownManager>()
-                .As<IShutdownManager>();
+                .As<IShutdownManager>()
+                .SingleInstance();
 
             builder.RegisterResourcesMonitoring(_log);
 
@@ -47,7 +49,6 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Modules
                 .SingleInstance();
 
             builder.RegisterType<MainPeriodicalHandler>()
-                .As<IStartable>()
                 .AutoActivate()
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_settings.DiskPath))
