@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using Common.Log;
@@ -11,6 +12,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
     public class DirectoryProcessor : IDirectoryProcessor
     {
         private const string _inProgressMarkFile = "InProgress.txt";
+        private const string _timeFormat = "yyyy-MM-dd-HH";
 
         private readonly IBlobSaver _blobSaver;
         private readonly ILog _log;
@@ -24,7 +26,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
         public async Task<bool> ProcessDirectoryAsync(string directoryPath)
         {
             var dirs = Directory.GetDirectories(directoryPath, "*", SearchOption.TopDirectoryOnly);
-            if (dirs.Length <= 1)
+            if (dirs.Length == 0)
                 return false;
 
             string inProgressFilePath = Path.Combine(directoryPath, _inProgressMarkFile);
@@ -54,9 +56,13 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
 
             var dirsToProcess = dirs.OrderBy(i => i).ToList();
             int processedDirsCount = 0;
+            int dirsToPocessCount = DateTime.TryParseExact(dirsToProcess[dirsToProcess.Count - 1], _timeFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTime dirCreationTime)
+                && DateTime.UtcNow.Subtract(dirCreationTime).TotalDays >= 1
+                ? dirsToProcess.Count
+                : dirsToProcess.Count - 1;
             try
             {
-                for (int i = 0; i < dirsToProcess.Count - 1; ++i)
+                for (int i = 0; i < dirsToPocessCount; ++i)
                 {
                     string dir = dirsToProcess[i];
 
@@ -94,7 +100,6 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                     {
                         File.Delete(file);
                     }
-                    File.Delete(inProgressFilePath);
                     try
                     {
                         Directory.Delete(dir);
@@ -111,6 +116,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
 
                     ++processedDirsCount;
                 }
+                File.Delete(inProgressFilePath);
             }
             catch (Exception ex)
             {

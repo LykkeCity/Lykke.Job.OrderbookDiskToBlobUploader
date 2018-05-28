@@ -5,7 +5,10 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Settings
     public class AppSettings
     {
         public OrderbookDiskToBlobUploaderSettings OrderbookDiskToBlobUploaderJob { get; set; }
+
         public SlackNotificationsSettings SlackNotifications { get; set; }
+
+        public MonitoringServiceClientSettings MonitoringServiceClient { get; set; }
     }
 
     public class SlackNotificationsSettings
@@ -18,6 +21,12 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Settings
         public string ConnectionString { get; set; }
 
         public string QueueName { get; set; }
+    }
+
+    public class MonitoringServiceClientSettings
+    {
+        [HttpCheck("api/isalive", false)]
+        public string MonitoringServiceUrl { get; set; }
     }
 
     public class OrderbookDiskToBlobUploaderSettings
