@@ -61,6 +61,9 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                 && DateTime.UtcNow.Subtract(dirCreationTime).TotalDays >= 1
                 ? dirsToProcess.Count
                 : dirsToProcess.Count - 1;
+
+            _log.WriteInfo("DirectoryProcessor.ProcessDirectoryAsync", container, $"Will process {dirsToPocessCount} directories");
+
             try
             {
                 for (int i = 0; i < dirsToPocessCount; ++i)
