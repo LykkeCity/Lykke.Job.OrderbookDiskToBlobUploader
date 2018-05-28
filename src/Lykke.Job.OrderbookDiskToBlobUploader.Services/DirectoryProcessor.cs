@@ -56,11 +56,15 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
 
             var dirsToProcess = dirs.OrderBy(i => i).ToList();
             int processedDirsCount = 0;
-            int dirsToPocessCount =
-                DateTime.TryParseExact(dirsToProcess[dirsToProcess.Count - 1], _timeFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTime dirCreationTime)
-                && DateTime.UtcNow.Subtract(dirCreationTime).TotalDays >= 1
-                ? dirsToProcess.Count
-                : dirsToProcess.Count - 1;
+            int dirsToPocessCount = dirsToProcess.Count - 1;
+            string lastDir = dirsToProcess[dirsToProcess.Count - 1];
+            if (DateTime.TryParseExact(lastDir, _timeFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTime dirCreationTime))
+            {
+                var dateDiff = DateTime.UtcNow.Subtract(dirCreationTime).TotalDays;
+                _log.WriteInfo("DirectoryProcessor.ProcessDirectoryAsync", container, $"Parsed {dirCreationTime} for {lastDir}. Diff = {dateDiff}");
+                if (dateDiff >= 1)
+                    dirsToPocessCount = dirsToProcess.Count;
+            }
 
             _log.WriteInfo("DirectoryProcessor.ProcessDirectoryAsync", container, $"Will process {dirsToPocessCount} directories");
 
