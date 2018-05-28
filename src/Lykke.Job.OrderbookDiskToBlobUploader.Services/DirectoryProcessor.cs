@@ -27,7 +27,9 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
         {
             var dirs = Directory.GetDirectories(directoryPath, "*", SearchOption.TopDirectoryOnly);
 
-            _log.WriteInfo("DirectoryProcessor.ProcessDirectoryAsync", directoryPath, $"Found {dirs.Length} directories");
+            string container = Path.GetFileName(directoryPath);
+
+            _log.WriteInfo("DirectoryProcessor.ProcessDirectoryAsync", container, $"Found {dirs.Length} directories");
 
             if (dirs.Length == 0)
                 return false;
@@ -47,8 +49,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                 }
                 catch (Exception ex)
                 {
-                    if (!File.Exists(inProgressFilePath))
-                        _log.WriteWarning(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), "Couldn't create in progress mark file", ex);
+                    _log.WriteWarning(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), "Error on in progress file creation", ex);
                     return false;
                 }
             }
@@ -66,7 +67,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                 {
                     string dir = dirsToProcess[i];
 
-                    _log.WriteInfo("DirectoryProcessor.ProcessDirectoryAsync", directoryPath, $"Processing {dir}");
+                    _log.WriteInfo("DirectoryProcessor.ProcessDirectoryAsync", container, $"Processing {dir}");
 
                     var files = Directory.EnumerateFiles(dir, "*", SearchOption.TopDirectoryOnly);
 
@@ -87,7 +88,6 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                         ++filesCount;
                     }
 
-                    string container = Path.GetFileName(directoryPath);
                     string storagePath = Path.GetFileName(dir);
                     try
                     {
@@ -97,6 +97,8 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                     {
                         throw new InvalidOperationException($"Couldn't save on {container} into {storagePath}", ex);
                     }
+
+                    _log.WriteInfo("DirectoryProcessor.ProcessDirectoryAsync", container, $"Processed {dir}");
 
                     foreach (var file in files)
                     {
@@ -122,7 +124,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
             }
             catch (Exception ex)
             {
-                _log.WriteError("DirectoryProcessor.ProcessDirectoryAsync", directoryPath, ex);
+                _log.WriteError("DirectoryProcessor.ProcessDirectoryAsync", container, ex);
             }
             return processedDirsCount > 0;
         }
