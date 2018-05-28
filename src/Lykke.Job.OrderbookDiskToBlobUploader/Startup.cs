@@ -104,7 +104,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader
 
                 appLifetime.ApplicationStarted.Register(() => StartApplication().GetAwaiter().GetResult());
                 appLifetime.ApplicationStopping.Register(() => StopApplication().GetAwaiter().GetResult());
-                appLifetime.ApplicationStopped.Register(() => CleanUp().GetAwaiter().GetResult());
+                appLifetime.ApplicationStopped.Register(CleanUp);
             }
             catch (Exception ex)
             {
@@ -149,7 +149,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader
             }
         }
 
-        private async Task CleanUp()
+        private void CleanUp()
         {
             try
             {
