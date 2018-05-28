@@ -57,7 +57,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
             var dirsToProcess = dirs.OrderBy(i => i).ToList();
             int processedDirsCount = 0;
             int dirsToPocessCount = dirsToProcess.Count - 1;
-            string lastDir = dirsToProcess[dirsToProcess.Count - 1];
+            string lastDir = Path.GetFileName(dirsToProcess[dirsToProcess.Count - 1]);
             if (DateTime.TryParseExact(lastDir, _timeFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTime dirCreationTime))
             {
                 var dateDiff = DateTime.UtcNow.Subtract(dirCreationTime).TotalDays;
