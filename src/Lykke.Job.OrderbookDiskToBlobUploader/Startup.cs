@@ -120,7 +120,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader
                 // NOTE: Job not yet recieve and process IsAlive requests here
 
                 await ApplicationContainer.Resolve<IStartupManager>().StartAsync();
-                await Log.WriteMonitorAsync("", Program.EnvInfo, "Started");
+                Log.WriteMonitor("", Program.EnvInfo, "Started");
 
 #if (!DEBUG)
                 await AutoRegistrationInMonitoring.RegisterAsync(Configuration, _monitoringServiceUrl, Log);
@@ -128,7 +128,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader
             }
             catch (Exception ex)
             {
-                await Log.WriteFatalErrorAsync(nameof(Startup), nameof(StartApplication), "", ex);
+                Log.WriteFatalError(nameof(Startup), nameof(StartApplication), ex);
                 throw;
             }
         }
@@ -144,9 +144,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader
             catch (Exception ex)
             {
                 if (Log != null)
-                {
-                    await Log.WriteFatalErrorAsync(nameof(Startup), nameof(StopApplication), "", ex);
-                }
+                    Log.WriteFatalError(nameof(Startup), nameof(StopApplication), ex);
                 throw;
             }
         }
@@ -156,19 +154,19 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader
             try
             {
                 // NOTE: Job can't recieve and process IsAlive requests here, so you can destroy all resources
-                
+
                 if (Log != null)
                 {
-                    await Log.WriteMonitorAsync("", Program.EnvInfo, "Terminating");
+                    Log.WriteMonitor("", Program.EnvInfo, "Terminating");
                 }
-                
+
                 ApplicationContainer.Dispose();
             }
             catch (Exception ex)
             {
                 if (Log != null)
                 {
-                    await Log.WriteFatalErrorAsync(nameof(Startup), nameof(CleanUp), "", ex);
+                    Log.WriteFatalError(nameof(Startup), nameof(CleanUp), ex);
                     (Log as IDisposable)?.Dispose();
                 }
                 throw;

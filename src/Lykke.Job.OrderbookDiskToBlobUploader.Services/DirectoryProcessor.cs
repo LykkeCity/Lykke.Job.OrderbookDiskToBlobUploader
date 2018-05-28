@@ -26,6 +26,9 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
         public async Task<bool> ProcessDirectoryAsync(string directoryPath)
         {
             var dirs = Directory.GetDirectories(directoryPath, "*", SearchOption.TopDirectoryOnly);
+
+            _log.WriteInfo("DirectoryProcessor.ProcessDirectoryAsync", directoryPath, $"Found {dirs.Length} directories");
+
             if (dirs.Length == 0)
                 return false;
 
@@ -45,18 +48,15 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                 catch (Exception ex)
                 {
                     if (!File.Exists(inProgressFilePath))
-                        await _log.WriteWarningAsync(
-                            nameof(DirectoryProcessor),
-                            nameof(ProcessDirectoryAsync),
-                            "Couldn't create in progress mark file",
-                            ex);
+                        _log.WriteWarning(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), "Couldn't create in progress mark file", ex);
                     return false;
                 }
             }
 
             var dirsToProcess = dirs.OrderBy(i => i).ToList();
             int processedDirsCount = 0;
-            int dirsToPocessCount = DateTime.TryParseExact(dirsToProcess[dirsToProcess.Count - 1], _timeFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTime dirCreationTime)
+            int dirsToPocessCount =
+                DateTime.TryParseExact(dirsToProcess[dirsToProcess.Count - 1], _timeFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTime dirCreationTime)
                 && DateTime.UtcNow.Subtract(dirCreationTime).TotalDays >= 1
                 ? dirsToProcess.Count
                 : dirsToProcess.Count - 1;
@@ -65,6 +65,8 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                 for (int i = 0; i < dirsToPocessCount; ++i)
                 {
                     string dir = dirsToProcess[i];
+
+                    _log.WriteInfo("DirectoryProcessor.ProcessDirectoryAsync", directoryPath, $"Processing {dir}");
 
                     var files = Directory.EnumerateFiles(dir, "*", SearchOption.TopDirectoryOnly);
 
@@ -109,7 +111,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                         throw new InvalidOperationException($"Failed to delete {dir} folder", ex);
                     }
 
-                    await _log.WriteInfoAsync(
+                    _log.WriteInfo(
                         "DirectoryProcessor.ProcessDirectoryAsync",
                         container,
                         $"Uploaded and deleted {filesCount} files for {storagePath}");
@@ -120,7 +122,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
             }
             catch (Exception ex)
             {
-                await _log.WriteErrorAsync("DirectoryProcessor.ProcessDirectoryAsync", directoryPath, ex);
+                _log.WriteError("DirectoryProcessor.ProcessDirectoryAsync", directoryPath, ex);
             }
             return processedDirsCount > 0;
         }
