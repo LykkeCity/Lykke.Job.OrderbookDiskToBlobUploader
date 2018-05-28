@@ -27,13 +27,10 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
         {
             var dirs = Directory.GetDirectories(directoryPath, "*", SearchOption.TopDirectoryOnly);
 
-            string container = Path.GetFileName(directoryPath);
-
-            _log.WriteInfo("DirectoryProcessor.ProcessDirectoryAsync", container, $"Found {dirs.Length} directories");
-
             if (dirs.Length == 0)
                 return false;
 
+            string container = Path.GetFileName(directoryPath);
             string inProgressFilePath = Path.Combine(directoryPath, _inProgressMarkFile);
             if (File.Exists(inProgressFilePath))
             {
@@ -49,32 +46,25 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                 }
                 catch (Exception ex)
                 {
-                    _log.WriteWarning(nameof(DirectoryProcessor), nameof(ProcessDirectoryAsync), "Error on in progress file creation", ex);
+                    _log.WriteWarning("DirectoryProcessor.ProcessDirectoryAsync", container, "Error on in progress file creation", ex);
                     return false;
                 }
             }
 
             var dirsToProcess = dirs.OrderBy(i => i).ToList();
             int processedDirsCount = 0;
+
             int dirsToPocessCount = dirsToProcess.Count - 1;
             string lastDir = Path.GetFileName(dirsToProcess[dirsToProcess.Count - 1]);
-            if (DateTime.TryParseExact(lastDir, _timeFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTime dirCreationTime))
-            {
-                var dateDiff = DateTime.UtcNow.Subtract(dirCreationTime).TotalDays;
-                _log.WriteInfo("DirectoryProcessor.ProcessDirectoryAsync", container, $"Parsed {dirCreationTime} for {lastDir}. Diff = {dateDiff}");
-                if (dateDiff >= 1)
-                    dirsToPocessCount = dirsToProcess.Count;
-            }
-
-            _log.WriteInfo("DirectoryProcessor.ProcessDirectoryAsync", container, $"Will process {dirsToPocessCount} directories");
+            if (DateTime.TryParseExact(lastDir, _timeFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTime dirCreationTime)
+                && DateTime.UtcNow.Subtract(dirCreationTime).TotalDays >= 1)
+                dirsToPocessCount = dirsToProcess.Count;
 
             try
             {
                 for (int i = 0; i < dirsToPocessCount; ++i)
                 {
                     string dir = dirsToProcess[i];
-
-                    _log.WriteInfo("DirectoryProcessor.ProcessDirectoryAsync", container, $"Processing {dir}");
 
                     var files = Directory.EnumerateFiles(dir, "*", SearchOption.TopDirectoryOnly);
 
@@ -104,8 +94,6 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                     {
                         throw new InvalidOperationException($"Couldn't save on {container} into {storagePath}", ex);
                     }
-
-                    _log.WriteInfo("DirectoryProcessor.ProcessDirectoryAsync", container, $"Processed {dir}");
 
                     foreach (var file in files)
                     {
