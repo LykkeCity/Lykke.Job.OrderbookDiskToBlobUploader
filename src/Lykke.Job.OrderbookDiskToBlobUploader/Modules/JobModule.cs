@@ -35,6 +35,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Modules
 
             builder.RegisterType<ShutdownManager>()
                 .As<IShutdownManager>()
+                .AutoActivate()
                 .SingleInstance();
 
             builder.RegisterResourcesMonitoring(_log);
@@ -49,7 +50,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Modules
                 .SingleInstance();
 
             builder.RegisterType<MainPeriodicalHandler>()
-                .AutoActivate()
+                .As<IStartStop>()
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_settings.DiskPath))
                 .WithParameter("workersMaxCount", _settings.WorkersMaxCount)

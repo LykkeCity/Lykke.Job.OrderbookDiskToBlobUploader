@@ -11,9 +11,9 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
     {
         private readonly List<IStartable> _items = new List<IStartable>();
 
-        public void Register(IStartable startable)
+        public StartupManager(IEnumerable<IStartStop> startables)
         {
-            _items.Add(startable);
+            _items.AddRange(startables);
         }
 
         public Task StartAsync()

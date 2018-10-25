@@ -12,7 +12,7 @@ using Lykke.Job.OrderbookDiskToBlobUploader.Core.Services;
 namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
 {
     [UsedImplicitly]
-    public class MainPeriodicalHandler : TimerPeriod
+    public class MainPeriodicalHandler : TimerPeriod, IStartStop
     {
         private const int _workerReduceReserveInMinutes = 15;
         private const int _minProcessedDirectoriesCountForWorkersChange = 10;
@@ -31,7 +31,6 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
         public MainPeriodicalHandler(
             ILog log,
             IDirectoryProcessor directoryProcessor,
-            IStartupManager startupManager,
             string diskPath,
             int workersMaxCount,
             int workersMinCount)
@@ -44,8 +43,6 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
             _workersMinCount = workersMinCount <= 0 ? 2 : workersMinCount;
             _workersCount = (_workersMaxCount + _workersMinCount) / 2;
             Directory.SetCurrentDirectory(_diskPath);
-
-            startupManager.Register(this);
         }
 
         public override async Task Execute()
