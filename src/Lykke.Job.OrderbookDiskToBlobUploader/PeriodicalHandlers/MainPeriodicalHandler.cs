@@ -4,9 +4,9 @@ using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
-using JetBrains.Annotations;
 using Common;
 using Common.Log;
+using JetBrains.Annotations;
 using Lykke.Job.OrderbookDiskToBlobUploader.Core.Services;
 
 namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
@@ -34,8 +34,8 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
             IStartupManager startupManager,
             string diskPath,
             int workersMaxCount,
-            int workersMinCount) :
-            base(nameof(MainPeriodicalHandler), (int)TimeSpan.FromMinutes(1).TotalMilliseconds, log)
+            int workersMinCount)
+            : base(nameof(MainPeriodicalHandler), (int)TimeSpan.FromMinutes(1).TotalMilliseconds, log)
         {
             _log = log;
             _directoryProcessor = directoryProcessor;
@@ -57,7 +57,8 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
             var workerTasks = Enumerable.Range(0, _workersCount).Select(i => ProcessDirectoriesAsync(i, concurrentQueue));
             await Task.WhenAll(workerTasks);
 
-            await _log.WriteInfoAsync(nameof(MainPeriodicalHandler), nameof(Execute), $"{_processedDirectoriesCount} directories are processed.");
+            if (_processedDirectoriesCount > 0)
+                _log.WriteInfo(nameof(MainPeriodicalHandler), nameof(Execute), $"{_processedDirectoriesCount} directories are processed.");
 
             if (_processedDirectoriesCount > _minProcessedDirectoriesCountForWorkersChange)
             {
@@ -70,7 +71,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
                     if (!_firstExecution && _workersCount <= _workersMaxCount - 2)
                     {
                         _workersCount += 2;
-                        await _log.WriteInfoAsync("MainPeriodicalHandler.Execute", "WorkersIncreased", $"Increased workers count to {_workersCount}.");
+                        _log.WriteInfo("MainPeriodicalHandler.Execute", "WorkersIncreased", $"Increased workers count to {_workersCount}.");
                     }
                     if (_firstExecution)
                         _firstExecution = false;
@@ -87,7 +88,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
                     if (_workersCount >= _workersMinCount + 1)
                     {
                         --_workersCount;
-                        await _log.WriteInfoAsync("MainPeriodicalHandler.Execute", "WorkersDecreased", $"Decreased workers count to {_workersCount}.");    
+                        _log.WriteInfo("MainPeriodicalHandler.Execute", "WorkersDecreased", $"Decreased workers count to {_workersCount}.");    
                     }
                     _idleExecutionStart = null;
                     _firstExecution = true;

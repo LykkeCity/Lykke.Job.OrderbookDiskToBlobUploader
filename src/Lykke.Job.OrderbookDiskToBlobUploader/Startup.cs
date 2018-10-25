@@ -4,12 +4,13 @@ using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using AzureStorage.Tables;
 using Common.Log;
+using Lykke.Common;
+using Lykke.Common.Api.Contract.Responses;
 using Lykke.Common.ApiLibrary.Middleware;
 using Lykke.Common.ApiLibrary.Swagger;
-using Lykke.Common.Api.Contract.Responses;
 using Lykke.Job.OrderbookDiskToBlobUploader.Core.Services;
-using Lykke.Job.OrderbookDiskToBlobUploader.Settings;
 using Lykke.Job.OrderbookDiskToBlobUploader.Modules;
+using Lykke.Job.OrderbookDiskToBlobUploader.Settings;
 using Lykke.Logs;
 using Lykke.Logs.Slack;
 using Lykke.MonitoringServiceApiCaller;
@@ -58,7 +59,12 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader
                 });
 
                 var builder = new ContainerBuilder();
-                var appSettings = Configuration.LoadSettings<AppSettings>();
+                var appSettings = Configuration.LoadSettings<AppSettings>(o =>
+                {
+                    o.SetConnString(s => s.SlackNotifications.AzureQueue.ConnectionString);
+                    o.SetQueueName(s => s.SlackNotifications.AzureQueue.QueueName);
+                    o.SenderName = $"{AppEnvironment.Name} {AppEnvironment.Version}";
+                });
                 _monitoringServiceUrl = appSettings.CurrentValue.MonitoringServiceClient.MonitoringServiceUrl;
 
                 Log = CreateLogWithSlack(services, appSettings);
@@ -73,7 +79,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader
             }
             catch (Exception ex)
             {
-                Log?.WriteFatalErrorAsync(nameof(Startup), nameof(ConfigureServices), "", ex).GetAwaiter().GetResult();
+                Log?.WriteFatalError(nameof(Startup), nameof(ConfigureServices), ex);
                 throw;
             }
         }
@@ -83,9 +89,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader
             try
             {
                 if (env.IsDevelopment())
-                {
                     app.UseDeveloperExceptionPage();
-                }
 
                 app.UseLykkeForwardedHeaders();
                 app.UseLykkeMiddleware("OrderbookDiskToBlobUploader", ex => new ErrorResponse {ErrorMessage = "Technical problem"});
@@ -108,7 +112,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader
             }
             catch (Exception ex)
             {
-                Log?.WriteFatalErrorAsync(nameof(Startup), nameof(Configure), "", ex).GetAwaiter().GetResult();
+                Log?.WriteFatalError(nameof(Startup), nameof(Configure), ex);
                 throw;
             }
         }
@@ -143,8 +147,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader
             }
             catch (Exception ex)
             {
-                if (Log != null)
-                    Log.WriteFatalError(nameof(Startup), nameof(StopApplication), ex);
+                Log?.WriteFatalError(nameof(Startup), nameof(StopApplication), ex);
                 throw;
             }
         }
@@ -155,10 +158,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader
             {
                 // NOTE: Job can't recieve and process IsAlive requests here, so you can destroy all resources
 
-                if (Log != null)
-                {
-                    Log.WriteMonitor("", Program.EnvInfo, "Terminating");
-                }
+                Log?.WriteMonitor("", Program.EnvInfo, "Terminating");
 
                 ApplicationContainer.Dispose();
             }
@@ -185,7 +185,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader
 
             if (string.IsNullOrEmpty(dbLogConnectionString))
             {
-                consoleLogger.WriteWarningAsync(nameof(Startup), nameof(CreateLogWithSlack), "Table loggger is not inited").Wait();
+                consoleLogger.WriteWarning(nameof(Startup), nameof(CreateLogWithSlack), "Table loggger is not inited");
                 return aggregateLogger;
             }
 
@@ -213,7 +213,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader
             azureStorageLogger.Start();
             aggregateLogger.AddLog(azureStorageLogger);
 
-            var logToSlack = LykkeLogToSlack.Create(slackService, "Bridges", LogLevel.Error | LogLevel.FatalError | LogLevel.Warning);
+            var logToSlack = LykkeLogToSlack.Create(slackService, "Bridges", LogLevel.Error | LogLevel.FatalError | LogLevel.Warning | LogLevel.Monitoring);
             aggregateLogger.AddLog(logToSlack);
 
             return aggregateLogger;
