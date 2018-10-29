@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using System.Collections.Concurrent;
-using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
 using Common;
@@ -22,8 +21,8 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
         private readonly string _diskPath;
         private readonly int _workersMaxCount;
         private readonly int _workersMinCount;
+        private readonly ConcurrentDictionary<string, bool> _processedDirectoriesDict = new ConcurrentDictionary<string, bool>();
 
-        private volatile int _processedDirectoriesCount;
         private DateTime? _idleExecutionStart;
         private int _workersCount;
         private bool _firstExecution = true;
@@ -47,17 +46,20 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
 
         public override async Task Execute()
         {
-            _processedDirectoriesCount = 0;
+            _processedDirectoriesDict.Clear();
             var start = DateTime.UtcNow;
             var directories = Directory.GetDirectories(_diskPath, "*", SearchOption.TopDirectoryOnly);
             var concurrentQueue = new ConcurrentQueue<string>(directories);
             var workerTasks = Enumerable.Range(0, _workersCount).Select(i => ProcessDirectoriesAsync(i, concurrentQueue));
             await Task.WhenAll(workerTasks);
 
-            if (_processedDirectoriesCount > 0)
-                _log.WriteInfo(nameof(MainPeriodicalHandler), nameof(Execute), $"{_processedDirectoriesCount} directories are processed.");
+            if (_processedDirectoriesDict.Count > 0)
+                _log.WriteInfo(
+                    nameof(Execute),
+                    string.Join(',', _processedDirectoriesDict.Keys),
+                    $"{_processedDirectoriesDict.Count} directories are processed");
 
-            if (_processedDirectoriesCount > _minProcessedDirectoriesCountForWorkersChange)
+            if (_processedDirectoriesDict.Keys.Count > _minProcessedDirectoriesCountForWorkersChange)
             {
                 if (_idleExecutionStart.HasValue)
                 {
@@ -85,7 +87,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
                     if (_workersCount >= _workersMinCount + 1)
                     {
                         --_workersCount;
-                        _log.WriteInfo("MainPeriodicalHandler.Execute", "WorkersDecreased", $"Decreased workers count to {_workersCount}.");    
+                        _log.WriteInfo("MainPeriodicalHandler.Execute", "WorkersDecreased", $"Decreased workers count to {_workersCount}.");
                     }
                     _idleExecutionStart = null;
                     _firstExecution = true;
@@ -100,9 +102,9 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
             bool needToProcess = directories.TryDequeue(out string directory);
             while(needToProcess)
             {
-                bool directoryProcessed = await _directoryProcessor.ProcessDirectoryAsync(directory);
-                if (directoryProcessed)
-                    Interlocked.Increment(ref _processedDirectoriesCount);
+                string processedContainer = await _directoryProcessor.ProcessDirectoryAsync(directory);
+                if (!string.IsNullOrWhiteSpace(processedContainer))
+                    _processedDirectoriesDict[processedContainer] = true;
                 needToProcess = directories.TryDequeue(out directory);
             }
         }

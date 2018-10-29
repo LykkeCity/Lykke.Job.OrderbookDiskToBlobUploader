@@ -23,12 +23,12 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
             _log = log;
         }
 
-        public async Task<bool> ProcessDirectoryAsync(string directoryPath)
+        public async Task<string> ProcessDirectoryAsync(string directoryPath)
         {
             var dirs = Directory.GetDirectories(directoryPath, "*", SearchOption.TopDirectoryOnly);
 
             if (dirs.Length == 0)
-                return false;
+                return null;
 
             string container = Path.GetFileName(directoryPath);
             string inProgressFilePath = Path.Combine(directoryPath, _inProgressMarkFile);
@@ -36,7 +36,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
             {
                 var creationDate = File.GetCreationTimeUtc(inProgressFilePath);
                 if (DateTime.UtcNow.Subtract(creationDate).TotalDays < 1)
-                    return false;
+                    return null;
             }
             else
             {
@@ -47,7 +47,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                 catch (Exception ex)
                 {
                     _log.WriteWarning("DirectoryProcessor.ProcessDirectoryAsync", container, "Error on in progress file creation", ex);
-                    return false;
+                    return null;
                 }
             }
 
@@ -108,11 +108,6 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                         throw new InvalidOperationException($"Failed to delete {dir} folder", ex);
                     }
 
-                    _log.WriteInfo(
-                        "DirectoryProcessor.ProcessDirectoryAsync",
-                        container,
-                        $"Uploaded and deleted {filesCount} files for {storagePath}");
-
                     ++processedDirsCount;
                 }
                 File.Delete(inProgressFilePath);
@@ -121,7 +116,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
             {
                 _log.WriteError("DirectoryProcessor.ProcessDirectoryAsync", container, ex);
             }
-            return processedDirsCount > 0;
+            return processedDirsCount > 0 ? container : null;
         }
     }
 }

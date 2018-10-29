@@ -4,6 +4,6 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Core.Services
 {
     public interface IDirectoryProcessor
     {
-        Task<bool> ProcessDirectoryAsync(string directoryPath);
+        Task<string> ProcessDirectoryAsync(string directoryPath);
     }
 }
