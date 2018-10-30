@@ -104,7 +104,7 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.PeriodicalHandlers
             {
                 string processedContainer = await _directoryProcessor.ProcessDirectoryAsync(directory);
                 if (!string.IsNullOrWhiteSpace(processedContainer))
-                    _processedDirectoriesDict[processedContainer] = true;
+                    _processedDirectoriesDict.TryAdd(processedContainer, true);
                 needToProcess = directories.TryDequeue(out directory);
             }
         }
