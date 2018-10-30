@@ -108,11 +108,6 @@ namespace Lykke.Job.OrderbookDiskToBlobUploader.Services
                         throw new InvalidOperationException($"Failed to delete {dir} folder", ex);
                     }
 
-                    _log.WriteInfo(
-                        "DirectoryProcessor.ProcessDirectoryAsync",
-                        container,
-                        $"Uploaded and deleted {filesCount} files for {storagePath}");
-
                     ++processedDirsCount;
                 }
                 File.Delete(inProgressFilePath);
